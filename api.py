@@ -8,7 +8,7 @@ from google import genai
 from datetime import datetime
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-GEMINI_API_KEY = "AIzaSyB7kCAa3t5wD3xJmxqMDkCP4b1_odZbtmY"  # replace with your key
+GEMINI_API_KEY = ""  # replace with your key
 CONFIDENCE_THRESHOLD = 5.0  # min % to include in results
 MIN_SYMPTOMS_TO_PREDICT = 3  # need at least 3 symptoms to predict
 
