@@ -6,9 +6,19 @@ import json
 import numpy as np
 from google import genai
 from datetime import datetime
+import os
+from pathlib import Path
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-GEMINI_API_KEY = ""  # replace with your key
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_DIR = BASE_DIR / "model"
+CASES_DIR = BASE_DIR / "cases"
+MODEL_FILE = MODEL_DIR / "betterhealth_model.pkl"
+SYMPTOM_COLUMNS_FILE = MODEL_DIR / "symptom_columns.json"
+FREQ_MAP_FILE = MODEL_DIR / "symptom_frequency_map.json"
+CASES_FILE = CASES_DIR / "new_cases.jsonl"
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 CONFIDENCE_THRESHOLD = 5.0  # min % to include in results
 MIN_SYMPTOMS_TO_PREDICT = 3  # need at least 3 symptoms to predict
 
@@ -23,18 +33,36 @@ app.add_middleware(
 
 # ── Load model and supporting files on startup ────────────────────────────────
 print("Loading model...")
-model = joblib.load("model/betterhealth_model.pkl")  # FIX 4: updated path
+model = None
+if MODEL_FILE.exists():
+    model = joblib.load(MODEL_FILE)
+else:
+    print(f"Warning: Model file not found at {MODEL_FILE}")
 
-with open("model/symptom_columns.json") as f:  # FIX 4: updated path
-    SYMPTOM_COLUMNS = json.load(f)
+SYMPTOM_COLUMNS = []
+if SYMPTOM_COLUMNS_FILE.exists():
+    with open(SYMPTOM_COLUMNS_FILE) as f:
+        SYMPTOM_COLUMNS = json.load(f)
+else:
+    print(f"Warning: Symptom columns file not found at {SYMPTOM_COLUMNS_FILE}")
 
-with open("model/symptom_frequency_map.json") as f:  # FIX 4: updated path
-    FREQ_MAP = json.load(f)
+FREQ_MAP = {}
+if FREQ_MAP_FILE.exists():
+    with open(FREQ_MAP_FILE) as f:
+        FREQ_MAP = json.load(f)
+else:
+    print(f"Warning: Symptom frequency map file not found at {FREQ_MAP_FILE}")
 
 # Setup Gemini
-gemini = genai.Client(api_key=GEMINI_API_KEY)  # FIX 1: added api_key=
+gemini = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
-print(f"Ready. {len(SYMPTOM_COLUMNS)} symptoms, {len(model.classes_)} diseases.")
+if not GEMINI_API_KEY:
+    print(
+        "Warning: GEMINI_API_KEY not set. Symptom extraction will return empty results."
+    )
+
+model_classes_count = len(model.classes_) if model is not None else 0
+print(f"Ready. {len(SYMPTOM_COLUMNS)} symptoms, {model_classes_count} diseases.")
 
 
 # ── Request / Response models ─────────────────────────────────────────────────
@@ -69,6 +97,9 @@ def extract_symptoms_with_gemini(text: str, symptom_list: list[str]) -> list[str
     Ask Gemini to read natural language and return matching symptoms
     from our known symptom list.
     """
+    if gemini is None:
+        return []
+
     prompt = f"""
 You are a medical symptom extraction assistant.
 
@@ -125,6 +156,9 @@ def parse_followup_answers_with_gemini(
     converted from yes/no buttons), extract which symptoms are present (1)
     or absent (0).
     """
+    if gemini is None:
+        return {}
+
     prompt = f"""
 You are a medical symptom extraction assistant.
 
@@ -178,6 +212,12 @@ def run_prediction(symptoms_dict: dict[str, int]) -> tuple[list[dict], list[str]
     Given a symptoms dict {symptom_name: 0/1}, run the Random Forest
     and return (top_conditions, follow_up_questions).
     """
+    if model is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Model not loaded. Train the model and place files in model/.",
+        )
+
     input_vector = np.array(
         [symptoms_dict.get(col, 0) for col in SYMPTOM_COLUMNS]
     ).reshape(1, -1)
@@ -378,7 +418,8 @@ def save_case(input: SaveCaseInput):
         "test_results": input.test_results,
     }
 
-    with open("cases/new_cases.jsonl", "a") as f:  # FIX 4: updated path
+    CASES_DIR.mkdir(parents=True, exist_ok=True)
+    with open(CASES_FILE, "a") as f:
         f.write(json.dumps(case) + "\n")
 
     return {"status": "Case saved successfully", "session_id": input.session_id}

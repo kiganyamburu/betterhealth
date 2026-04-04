@@ -4,10 +4,16 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 import joblib
 import json
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+DATA_FILE = BASE_DIR / "data" / "Final_Augmented_dataset_Diseases_and_Symptoms.csv"
+MODEL_DIR = BASE_DIR / "model"
+MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── 1. Load dataset ──────────────────────────────────────────────────────────
 print("Loading dataset...")
-df = pd.read_csv("Final_Augmented_dataset_Diseases_and_Symptoms.csv")
+df = pd.read_csv(DATA_FILE)
 
 # ── 2. Separate features and target ──────────────────────────────────────────
 X = df.drop(columns=["disease"])  # all symptom columns
@@ -15,8 +21,6 @@ y = df["disease"]  # target label
 
 # Save symptom column names for use in the API later
 symptom_columns = list(X.columns)
-with open("symptom_columns.json", "w") as f:
-    json.dump(symptom_columns, f)
 print(f"Symptoms: {len(symptom_columns)} features")
 print(f"Diseases: {y.nunique()} unique classes")
 
@@ -58,8 +62,8 @@ accuracy = (y_pred == y_test).mean()
 print(f"\nOverall accuracy: {accuracy:.2%}")
 
 # ── 6. Save model ─────────────────────────────────────────────────────────────
-joblib.dump(model, "betterhealth_model.pkl")
-print("\nModel saved to betterhealth_model.pkl")
+joblib.dump(model, MODEL_DIR / "betterhealth_model.pkl")
+print("\nModel saved to model/betterhealth_model.pkl")
 
 # ── 7. Build symptom frequency map (for follow-up question engine) ────────────
 # For each disease, find which symptoms are most commonly present (value=1)
@@ -72,10 +76,12 @@ for disease in df["disease"].unique():
     common_symptoms = common_symptoms[common_symptoms > 0.5].index.tolist()
     freq_map[disease] = common_symptoms
 
-with open("symptom_frequency_map.json", "w") as f:
+with open(MODEL_DIR / "symptom_frequency_map.json", "w") as f:
     json.dump(freq_map, f)
-print("Symptom frequency map saved to symptom_frequency_map.json")
+with open(MODEL_DIR / "symptom_columns.json", "w") as f:
+    json.dump(symptom_columns, f)
+print("Symptom frequency map saved to model/symptom_frequency_map.json")
 print("\nDone! Files created:")
-print("  - betterhealth_model.pkl")
-print("  - symptom_columns.json")
-print("  - symptom_frequency_map.json")
+print("  - model/betterhealth_model.pkl")
+print("  - model/symptom_columns.json")
+print("  - model/symptom_frequency_map.json")

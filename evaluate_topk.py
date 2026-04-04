@@ -3,14 +3,19 @@ import numpy as np
 import joblib
 import json
 from sklearn.model_selection import train_test_split
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+DATA_FILE = BASE_DIR / "data" / "Final_Augmented_dataset_Diseases_and_Symptoms.csv"
+MODEL_DIR = BASE_DIR / "model"
 
 print("Loading model and data...")
-model = joblib.load("betterhealth_model.pkl")
+model = joblib.load(MODEL_DIR / "betterhealth_model.pkl")
 
-with open("symptom_columns.json") as f:
+with open(MODEL_DIR / "symptom_columns.json") as f:
     SYMPTOM_COLUMNS = json.load(f)
 
-df = pd.read_csv("Final_Augmented_dataset_Diseases_and_Symptoms.csv")
+df = pd.read_csv(DATA_FILE)
 X = df.drop(columns=["disease"])
 y = df["disease"]
 
