@@ -5,7 +5,7 @@ import joblib
 import json
 import numpy as np
 from google import genai
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 
@@ -410,7 +410,7 @@ def save_case(input: SaveCaseInput):
     """
     case = {
         "session_id": input.session_id,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "symptoms": input.symptoms,
         "confirmed_diagnosis": input.confirmed_diagnosis,
         "notes": input.notes,
