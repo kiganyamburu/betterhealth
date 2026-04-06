@@ -17,7 +17,7 @@ The API supports a 3-step flow:
 - api.py: FastAPI app and Gemini-assisted symptom parsing
 - train_model.py: model training and artifact generation
 - evaluate_topk.py: Top-1, Top-3, Top-5 evaluation
-- tasks.ps1: simple task runner (train/evaluate/serve/test)
+- tasks.ps1: simple task runner (train/evaluate/serve/test/retrain)
 - tests/test_api.py: automated API endpoint tests
 - requirements.txt: Python dependencies
 - data/Final_Augmented_dataset_Diseases_and_Symptoms.csv: training dataset
@@ -70,7 +70,10 @@ Use the included PowerShell task runner:
 .\tasks.ps1 evaluate
 .\tasks.ps1 serve
 .\tasks.ps1 test
+.\tasks.ps1 retrain
 ```
+
+tasks.ps1 automatically uses env/Scripts/python.exe when it exists.
 
 ## Manual Commands
 

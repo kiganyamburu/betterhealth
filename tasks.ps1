@@ -1,20 +1,32 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("train", "evaluate", "serve", "test")]
+    [ValidateSet("train", "evaluate", "serve", "test", "retrain")]
     [string]$Task
 )
 
+$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$VenvPython = Join-Path $ProjectRoot "env\Scripts\python.exe"
+$PythonExe = if (Test-Path $VenvPython) { $VenvPython } else { "python" }
+
 switch ($Task) {
     "train" {
-        python train_model.py
+        & $PythonExe train_model.py
     }
     "evaluate" {
-        python evaluate_topk.py
+        & $PythonExe evaluate_topk.py
     }
     "serve" {
-        uvicorn api:app --reload
+        & $PythonExe -m uvicorn api:app --reload
     }
     "test" {
-        python -m pytest tests -q
+        & $PythonExe -m pytest tests -q
+    }
+    "retrain" {
+        # Rebuild model artifacts, then report top-k quality with the fresh model.
+        & $PythonExe train_model.py
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+        & $PythonExe evaluate_topk.py
     }
 }
